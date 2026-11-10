@@ -1,126 +1,49 @@
 import streamlit as st
-import tensorflow as tf
-import numpy as np
 from PIL import Image
-from pathlib import Path
 
-BASE_DIR = Path(__file__).parent
-MODEL_PATH = BASE_DIR / "keras_model.h5"
-LABELS_PATH = BASE_DIR / "labels.txt"
-
-st.set_page_config(
-    page_title="KI-Bilderkennung",
-    page_icon="🛰️",
-    layout="centered"
-)
+st.set_page_config(page_title="Bilderkennung KI", page_icon="🧠", layout="wide")
 
 st.markdown("""
 <style>
-    .main {max-width: 900px; padding-top: 2rem;}
-    .hero {
-        padding: 1.5rem; border-radius: 18px;
-        background: linear-gradient(120deg, #14213d, #263f68);
-        color: white; margin-bottom: 1.5rem;
-    }
-    .small-note {color: #8b949e; font-size: 0.9rem;}
+.stApp{background:radial-gradient(ellipse at 75% 0%,#17283b 0%,#08111c 50%,#060d15 100%);color:#edf5ff}
+[data-testid="stSidebar"]{background:linear-gradient(180deg,#0c1724,#101e2e);border-right:1px solid #21364b}
+[data-testid="stSidebar"] *{color:#e8f2ff}
+.block-container{padding-top:1.5rem;max-width:1500px}
+.hero{border:1px solid #20384f;border-left:6px solid #26a8f5;border-radius:16px;padding:25px 30px;margin-bottom:18px;background:linear-gradient(105deg,#0c1927,#153148)}
+.hero h1{font-size:clamp(2rem,4vw,3.2rem);margin:0;color:white}
+.hero p,.muted{color:#b8cadb}
+.panel{background:linear-gradient(145deg,#111d2b,#0b1521);border:1px solid #20364b;border-radius:16px;padding:20px;min-height:260px}
+.placeholder{border:1px dashed #3c5872;border-radius:12px;padding:38px 16px;text-align:center;color:#b8cadb;background:#08121e}
+.stat{border:1px solid #24425a;border-radius:12px;padding:14px;background:#0c1d2c}
+div[data-testid="stFileUploader"] section{border:1px dashed #41627e;border-radius:12px;background:#08121e}
+.stButton button[kind="primary"]{background:linear-gradient(90deg,#087fc4,#22a9f5);border:0;color:white}
 </style>
-""", unsafe_allow_html=True)
+""",unsafe_allow_html=True)
 
-st.markdown("""
-<div class="hero">
-  <h1>🛰️ KI-Bilderkennung</h1>
-  <p>Lade ein Bild hoch und lasse es von deinem selbst trainierten Modell klassifizieren.</p>
-</div>
-""", unsafe_allow_html=True)
+with st.sidebar:
+    st.markdown("<div style='text-align:center;padding:18px 4px 28px'><div style='font-size:3.5rem'>🧠</div><div style='font-size:1.5rem;font-weight:850'>BILDERKENNUNG<br><span style='color:#26a8f5'>KI</span></div><small>INTELLIGENTE BILDAUSWERTUNG</small></div>",unsafe_allow_html=True)
+    page=st.radio("Navigation",["⌂  Startseite","▥  Analyse","ⓘ  Über das Projekt"],label_visibility="collapsed")
+    st.markdown("---")
+    st.markdown("<div style='border:1px solid #263d52;border-radius:12px;padding:14px;background:#101d2a'><b style='color:#8ed8ff'>Systemstatus</b><p style='color:#f5c45b;margin:8px 0'>● Designvorlage</p><small>Die Oberfläche ist bereit. Eine Klassifizierungsfunktion ist nicht verbunden.</small></div>",unsafe_allow_html=True)
 
-@st.cache_resource
-def load_model():
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(f"Modelldatei nicht gefunden: {MODEL_PATH.name}")
-    # compile=False: Für reine Vorhersagen werden keine Trainingsmetriken benötigt.
-    return tf.keras.models.load_model(MODEL_PATH, compile=False)
+st.markdown("<div class='hero'><div style='font-size:.8rem;letter-spacing:.18em;color:#55c1ff;font-weight:800'>KI-BILDERKENNUNG</div><h1>Bilderkennung <span style='color:#26a8f5'>KI</span></h1><p>Eine moderne Oberfläche zur übersichtlichen Darstellung von Bildanalysen.</p><div style='color:#e0ebf5'>Lade ein Bild hoch und nutze die Oberfläche als Grundlage für dein eigenes Klassifizierungsprojekt.</div></div>",unsafe_allow_html=True)
 
-def load_labels():
-    if not LABELS_PATH.exists():
-        raise FileNotFoundError(f"Labeldatei nicht gefunden: {LABELS_PATH.name}")
-
-    labels = []
-    for line in LABELS_PATH.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        # Teachable Machine speichert Labels häufig als "0 Klassenname".
-        parts = line.split(maxsplit=1)
-        labels.append(parts[1].strip() if len(parts) == 2 and parts[0].isdigit() else line)
-    return labels
-
-def prepare_image(image: Image.Image):
-    # Das Teachable-Machine-Bildmodell erwartet 224 x 224 RGB-Pixel.
-    image = image.convert("RGB").resize((224, 224))
-    image_array = np.asarray(image, dtype=np.float32)
-
-    # Standard-Vorverarbeitung für Teachable-Machine-Keras-Bildmodelle:
-    # Pixelwerte von 0..255 auf -1..1 skalieren.
-    image_array = (image_array / 127.5) - 1.0
-    return np.expand_dims(image_array, axis=0)
-
-try:
-    model = load_model()
-    labels = load_labels()
-except Exception as error:
-    st.error(f"Das Modell konnte nicht geladen werden: {error}")
-    st.stop()
-
-uploaded_file = st.file_uploader(
-    "Bild auswählen",
-    type=["jpg", "jpeg", "png", "webp"],
-    help="Wähle ein Bild aus, das dein Modell erkennen soll."
-)
-
-if uploaded_file is not None:
-    try:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Hochgeladenes Bild", use_container_width=True)
-
-        if st.button("Bild analysieren", type="primary", use_container_width=True):
-            with st.spinner("Dein KI-Modell analysiert das Bild …"):
-                input_data = prepare_image(image)
-                predictions = model.predict(input_data, verbose=0)[0]
-
-            if len(predictions) != len(labels):
-                st.error(
-                    f"Das Modell gibt {len(predictions)} Werte aus, "
-                    f"aber labels.txt enthält {len(labels)} Klassen. "
-                    "Bitte überprüfe die Labeldatei."
-                )
-                st.stop()
-
-            # Die Teachable-Machine-Ausgabe ist bei diesem Modell eine Softmax-Verteilung.
-            probabilities = np.asarray(predictions, dtype=float)
-            best_index = int(np.argmax(probabilities))
-
-            st.success("Analyse abgeschlossen")
-            st.subheader("Ergebnis")
-            st.markdown(f"### {labels[best_index]}")
-            st.metric("Höchster Modellwert", f"{probabilities[best_index] * 100:.1f} %")
-
-            st.subheader("Alle Klassen")
-            sorted_indices = np.argsort(probabilities)[::-1]
-            for index in sorted_indices:
-                score = float(probabilities[index])
-                st.write(f"**{labels[index]}** — {score * 100:.1f} %")
-                st.progress(min(max(score, 0.0), 1.0))
-
-            st.caption(
-                "Hinweis: Die Prozentwerte sind Modell-Konfidenzwerte und "
-                "keine Garantie, dass die Erkennung richtig ist."
-            )
-    except Exception as error:
-        st.error(f"Das Bild konnte nicht verarbeitet werden: {error}")
+if page.startswith(("⌂","▥")):
+    left,right=st.columns([1,1.05],gap="medium")
+    with left:
+        st.markdown("<div class='panel'><h3>▧ &nbsp; Bild hochladen</h3><p class='muted'>Wähle ein Bild von deinem Gerät aus.</p>",unsafe_allow_html=True)
+        file=st.file_uploader("Bild auswählen",type=["jpg","jpeg","png","webp"],label_visibility="collapsed")
+        if file:
+            st.image(Image.open(file).convert("RGB"),caption="Ausgewähltes Bild",use_container_width=True)
+            st.success("Bild wurde erfolgreich geladen.")
+        else:
+            st.markdown("<div class='placeholder'><div style='font-size:2.8rem;color:#32b5ff'>⇧</div><b>Bild hier ablegen oder oben auswählen</b><br><small>Unterstützte Formate: JPG, PNG, JPEG, WEBP</small></div>",unsafe_allow_html=True)
+        st.markdown("<p class='muted'>Projektstatus: Designvorlage</p></div>",unsafe_allow_html=True)
+    with right:
+        st.markdown("<div class='panel'><h3>▥ &nbsp; Analyseergebnisse</h3><div class='placeholder'><div style='font-size:2.3rem'>📊</div><b>Noch keine Analyse vorhanden</b><br><small>Hier erscheinen später die Ergebnisse eines geeigneten Klassifizierungsmodells.</small></div><br><div class='stat'><b>Ergebnisübersicht</b><p class='muted'>Klassen und Modellwerte werden nach einer geeigneten Anbindung angezeigt.</p></div></div>",unsafe_allow_html=True)
+    st.markdown("<br><div class='panel' style='min-height:unset'><h3>✦ &nbsp; Über das Projekt</h3><p class='muted'>Diese Streamlit-Vorlage bietet ein modernes Grunddesign für ein allgemeines Bilderkennungsprojekt.</p></div>",unsafe_allow_html=True)
 else:
-    st.info("Lade oben ein Bild hoch, um die Erkennung zu starten.")
+    st.markdown("<div class='panel'><h3>ⓘ &nbsp; Über das Projekt</h3><p>Diese Anwendung ist eine deutschsprachige Designvorlage für ein allgemeines Bilderkennungsprojekt.</p><p class='muted'>Die Oberfläche enthält Bild-Upload, Ergebnisbereich und Navigation. Eine konkrete Klassifizierungsfunktion ist in dieser neutralen Vorlage nicht enthalten.</p></div>",unsafe_allow_html=True)
 
-with st.expander("Über das Modell"):
-    st.write("Eingabegröße: 224 × 224 Pixel, RGB")
-    st.write(f"Anzahl der erkannten Klassen: {len(labels)}")
-    st.write("Das Modell wurde mit Teachable Machine trainiert.")
+st.markdown("<div style='text-align:center;color:#70869a;font-size:.78rem;padding:22px'>BILDERKENNUNG KI · STREAMLIT-DESIGNVORLAGE</div>",unsafe_allow_html=True)
+
